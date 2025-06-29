@@ -50,7 +50,7 @@ export default function PeoplePage() {
   const [hasMoreUsers, setHasMoreUsers] = useState(true);
   const [isLoadingMore] = useState(false);
 
-  // Fetch users with pagination
+  // Fetch users with pagination - no authentication required
   const { loading } = useQuery(GET_ALL_USERS, {
     variables: {
       input: {

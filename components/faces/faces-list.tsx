@@ -11,6 +11,8 @@ import { Eye, Heart, Loader2, MoreHorizontal } from "lucide-react";
 import Image from "next/image";
 import { Face } from "@/app/faces/page";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 type FacesListProps = {
   displayedFaces: Face[];
@@ -32,6 +34,8 @@ export function FacesList({
   userProducts = [],
 }: FacesListProps) {
   const [expandedFaces, setExpandedFaces] = useState<Set<string>>(new Set());
+  const { data: session } = useSession();
+  const router = useRouter();
 
   // Helper function to get product name by ID
   const getProductName = (productId: string) => {
@@ -74,7 +78,8 @@ export function FacesList({
     }
 
     // 4. Products used tags (orange) - limit to 2 if not expanded
-    if (face.productsUsed && face.productsUsed.length > 0) {
+    // Only show if user is authenticated and has products data
+    if (session && face.productsUsed && face.productsUsed.length > 0) {
       const productsToShow = isExpanded ? face.productsUsed : face.productsUsed.slice(0, 2);
       
       productsToShow.forEach((productId, index) => {
@@ -117,6 +122,18 @@ export function FacesList({
       }
       return newSet;
     });
+  };
+
+  const handleLikeClick = (face: Face, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Check if user is authenticated before allowing like
+    if (!session) {
+      router.push("/signin");
+      return;
+    }
+    
+    handleLike(face, e);
   };
 
   return (
@@ -174,14 +191,15 @@ export function FacesList({
                   <Button
                     variant={face.isLiked ? "default" : "outline"}
                     className="w-full"
-                    onClick={(e) => handleLike(face, e)}
+                    onClick={(e) => handleLikeClick(face, e)}
+                    disabled={!session}
                   >
                     <Heart
                       className={`h-4 w-4 mr-2 ${
                         face.isLiked ? "fill-current" : ""
                       }`}
                     />
-                    {face.isLiked ? "Liked" : "Like"}
+                    {!session ? "Sign in to Like" : face.isLiked ? "Liked" : "Like"}
                   </Button>
                 </CardFooter>
               </Card>

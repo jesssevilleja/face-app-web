@@ -15,6 +15,7 @@ import Footer from "@/components/home/footer";
 import { Face } from "@/app/faces/page";
 import { format } from "date-fns";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 
 const GET_USER_PROFILE = gql`
   query GetUserProfile($id: ID!) {
@@ -85,6 +86,7 @@ interface UserProfile {
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession(); // Remove authentication requirement
   const userId = params.userId as string;
 
   // State for faces and UI
@@ -98,12 +100,12 @@ export default function UserProfilePage() {
   const [isLoadingMore] = useState(false);
   const [expandedFaces, setExpandedFaces] = useState<Set<string>>(new Set());
 
-  // Fetch user profile
+  // Fetch user profile - no authentication required
   const { data: userProfileData, loading: userLoading } = useQuery(GET_USER_PROFILE, {
     variables: { id: userId },
   });
 
-  // Fetch user's faces
+  // Fetch user's faces - no authentication required
   const { loading: facesLoading } = useQuery(GET_USER_FACES, {
     variables: {
       input: {
@@ -131,8 +133,10 @@ export default function UserProfilePage() {
     },
   });
 
-  // Fetch user products for tag display
-  const { data: productsData } = useQuery(GET_USER_PRODUCTS);
+  // Fetch user products for tag display - only if authenticated
+  const { data: productsData } = useQuery(GET_USER_PRODUCTS, {
+    skip: !session, // Skip if not authenticated
+  });
 
   // Handle loading more faces
   const loadMoreFaces = () => {
@@ -196,6 +200,13 @@ export default function UserProfilePage() {
 
   const handleLike = (face: Face, event: React.MouseEvent) => {
     event.stopPropagation();
+    
+    // Check if user is authenticated before allowing like
+    if (!session) {
+      router.push("/signin");
+      return;
+    }
+    
     // This would be implemented similar to the faces page
     console.log("Like face:", face.id);
   };
@@ -249,7 +260,8 @@ export default function UserProfilePage() {
     }
 
     // 4. Products used tags (orange) - limit to 2 if not expanded
-    if (face.productsUsed && face.productsUsed.length > 0) {
+    // Only show if user is authenticated and has products data
+    if (session && face.productsUsed && face.productsUsed.length > 0) {
       const productsToShow = isExpanded ? face.productsUsed : face.productsUsed.slice(0, 2);
       
       productsToShow.forEach((productId, index) => {
@@ -293,16 +305,20 @@ export default function UserProfilePage() {
 
   if (!userProfile) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">User not found</h1>
-          <p className="text-muted-foreground">The user you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push("/people")} className="mt-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to People
-          </Button>
+      <>
+        <Navbar />
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">User not found</h1>
+            <p className="text-muted-foreground">The user you're looking for doesn't exist.</p>
+            <Button onClick={() => router.push("/people")} className="mt-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to People
+            </Button>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
@@ -412,6 +428,32 @@ export default function UserProfilePage() {
             </Button>
           </div>
         </div>
+
+        {/* Authentication Notice for Non-Authenticated Users */}
+        {!session && (
+          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Sign in to interact with faces
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    You can view all faces, but you'll need to sign in to like faces or view larger images.
+                  </p>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => router.push("/signin")}
+                  className="ml-auto"
+                >
+                  Sign In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Faces Grid with Tags */}
         <section className="mb-8 md:mb-10">
