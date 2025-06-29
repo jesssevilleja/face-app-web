@@ -140,13 +140,11 @@ export function FacesList({
 
   const handleLikeClick = (face: Face, e: React.MouseEvent) => {
     e.stopPropagation();
-
     // Check if user is authenticated before allowing like
     if (!session) {
       router.push("/signin");
       return;
     }
-
     handleLike(face, e);
   };
 

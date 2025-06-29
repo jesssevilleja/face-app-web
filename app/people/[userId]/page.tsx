@@ -217,13 +217,11 @@ export default function UserProfilePage() {
 
   const handleLike = (face: Face, event: React.MouseEvent) => {
     event.stopPropagation();
-
     // Check if user is authenticated before allowing like
     if (!session) {
       router.push("/signin");
       return;
     }
-
     // This would be implemented similar to the faces page
     console.log("Like face:", face.id);
   };
